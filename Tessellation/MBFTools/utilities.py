@@ -176,9 +176,11 @@ def ExtractSurface(volume):
         
 #Print the progress of the loop
 def PrintProgress(i,N,progress_old):
-	progress_=(int((float(i)/N*100+0.5)))
-	if progress_%10==0 and progress_%10!=progress_old: print ("    Progress: %d%%"%progress_)
-	return progress_%10
+	progress_ = int((float(i) / N * 100 + 0.5))
+	progress_10 = progress_ // 10
+	if progress_10 != progress_old or i == N - 1:
+		print("    Progress: %d%%" % (100 if i == N - 1 else progress_10 * 10))
+	return 10 if i == N - 1 else progress_10
 
 def TagOuterSurface(Surface):
 	#Create an OBB tree and cast Rays       
