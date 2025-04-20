@@ -4,7 +4,7 @@ import vtk
 import argparse
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
-from utilities import ReadVTUFile, ReadVTPFile, WriteVTPFile, GetCentroid, ThresholdPointsByUpper, LargestConnectedRegion, PrintProgress
+from SimVascularTools.utilities import ReadVTUFile, ReadVTPFile, WriteVTPFile, GetCentroid, ThresholdPointsByUpper, LargestConnectedRegion, PrintProgress
 
 class RayBasedIschemicProfile():
     def __init__(self, Args):

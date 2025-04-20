@@ -5,7 +5,7 @@ import os
 from glob import glob
 from scipy.spatial import distance as DISTANCE
 import argparse
-from utilities import *
+from SimVascularTools.utilities import *
 
 class ImageAnalysisMyocardiumCoronaryTerritories():
 	def __init__(self,Args):

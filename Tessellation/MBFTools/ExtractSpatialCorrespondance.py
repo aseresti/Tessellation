@@ -3,7 +3,7 @@ import os
 import argparse
 import numpy as np
 from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
-from utilities import WriteVTUFile, ReadVTUFile, ThresholdInBetween, ClosestPoint
+from SimVascularTools.utilities import WriteVTUFile, ReadVTUFile, ThresholdInBetween, ClosestPoint
 
 
 
