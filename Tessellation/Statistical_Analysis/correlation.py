@@ -17,14 +17,40 @@ def ScatterPlot(x, y, xlabel, ylabel, r, p):
 
     plt.plot(x_fit, x_fit, 'k-', label="x = y line")
 
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.xlabel(xlabel, fontsize = 16)
+    plt.ylabel(ylabel, fontsize = 16)
     #plt.title(title)
     #plt.legend()
     #plt.grid()
     plt.text(0.02, 0.95, f"p = {p:.4f}", transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
     plt.text(0.02, 0.88, f"r = {r:.2f}", transform=plt.gca().transAxes, fontsize=12, verticalalignment='top')
+    plt.show()
 
+def BlandAltman(A, B, xlabel, ylabel, unit):
+    A = np.asarray(A)
+    B = np.asarray(B)
+    mean = np.mean([A, B], axis = 0)
+    diff = A - B
+    md = np.mean(diff) # Mean of difference
+    sd = np.std(diff, axis = 0) #standard deviation of difference
+
+    plt.scatter(mean, diff, color = 'red')
+    plt.axhline(md, color='gray', linestyle='--')
+
+    loa_upper = md + 1.96*sd
+    loa_lower = md - 1.96*sd
+
+    plt.text(np.min(mean), loa_upper - 0.2, f'+1.96 $\sigma$ = {loa_upper:.2f} {unit}', color='gray', va='top', fontsize = 16)
+    plt.text(np.min(mean), loa_lower + 0.2, f'-1.96 $\sigma$ = {loa_lower:.2f} {unit}', color='gray', va='bottom', fontsize = 16)
+    plt.text(np.min(mean), md + 0.2, f'{md:.2f} $\pm$ {sd:.2f} {unit}', color='gray', va='bottom', fontsize = 16)
+
+    plt.axhline(loa_upper, color='gray', linestyle='--')
+    plt.axhline(loa_lower, color='gray', linestyle='--')
+
+    plt.xlabel(xlabel, fontsize = 16)
+    plt.ylabel(ylabel, fontsize = 16)
+    #plt.title("Bland Altman")
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -57,3 +83,7 @@ if __name__ == "__main__":
     print("velcoity wilcoxon test:", res_v.statistic, res_v.pvalue)
     print("flow wilcoxon test:", res_f.statistic, res_f.pvalue)
     print("pressure wilcoxon test:", res_p.statistic, res_p.pvalue)
+
+    #BlandAltman(velocity_inv, velocity_cfd, r"$Velocity_{Doppler}$ (cm/s)", r"$Velocity_{Doppler}$ - $Velocity_{CFD}$ (cm/s)", "cm/s")
+    #BlandAltman(flow_inv, flow_cfd, r"$Q_{Doppler}$ (mL/min)", r"$Q_{Doppler}$ - $Q_{CFD}$ (mL/min)", "mL/min")
+    #BlandAltman(pressure_inv, pressure_cfd, r"$Pressure_{Doppler}$ (mmHg)", r"$Pressure_{Doppler}$ - $Pressure_{CFD}$ (mmHg)", "mmHg")
