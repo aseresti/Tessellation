@@ -13,14 +13,13 @@ class ConvertPath2VTP():
     def main(self):
         filenames = glob.glob(os.path.join(self.Args.InputFolder,"*.pth"))
 
-        Lumen_points = dict()
         for file in filenames:
             lumen = os.path.splitext(os.path.basename(file))[0]
             output_path = os.path.join(f"{self.Args.InputFolder}",f"{lumen}.vtp")
             points = self.pth_to_points(file)
-            self.points_to_vtp(points,output_path)
-            Lumen_points[lumen] = points
-        return Lumen_points
+            polydata = self.points_to_vtp(points)
+            self.WriteVTPFile(output_path, polydata)
+        
 
     def pth_to_points(self,PathFile):
         with open(PathFile, "r") as path:
@@ -37,7 +36,7 @@ class ConvertPath2VTP():
 
         return points
         
-    def points_to_vtp(self, points, output_vtp):
+    def points_to_vtp(self, points):
         # Create VTK points
         vtk_points = vtk.vtkPoints()
         for point in points:
@@ -57,7 +56,10 @@ class ConvertPath2VTP():
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(vtk_points)
         polydata.SetLines(cells)
+
+        return polydata
     
+    def WriteVTPFile(self, output_vtp, polydata):
         # Write to a .vtp file
         writer = vtk.vtkXMLPolyDataWriter()
         writer.SetFileName(output_vtp)
@@ -70,4 +72,4 @@ if __name__=="__main__":
     Parser.add_argument("-InputFolder", "--InputFolder", dest="InputFolder", type=str, required=True)
     args = Parser.parse_args()
 
-    _ = ConvertPath2VTP(args).main()
+    ConvertPath2VTP(args).main()
