@@ -9,14 +9,13 @@ import xml.etree.ElementTree as ET
 class ConvertPath2VTP():
     def __init__(self,Args):
         self.Args = Args
+        self.filenames = glob.glob(os.path.join(self.Args.InputFolder,"*.pth"))
 
     def main(self):
-        filenames = glob.glob(os.path.join(self.Args.InputFolder,"*.pth"))
-
-        for file in filenames:
+        for file in self.filenames:
             lumen = os.path.splitext(os.path.basename(file))[0]
             output_path = os.path.join(f"{self.Args.InputFolder}",f"{lumen}.vtp")
-            points = self.pth_to_points(file)
+            points, _ = self.pth_to_points(file)
             polydata = self.points_to_vtp(points)
             self.WriteVTPFile(output_path, polydata)
         
@@ -33,8 +32,15 @@ class ConvertPath2VTP():
             y = float(path_point.attrib['y'])
             z = float(path_point.attrib['z'])
             points.append((x, y, z))
+        
+        direction = []
+        for path_point in root.findall(".//path_point/tangent"):
+            x = float(path_point.attrib['x'])
+            y = float(path_point.attrib['y'])
+            z = float(path_point.attrib['z'])
+            direction.append((x, y, z))
 
-        return points
+        return points, direction
         
     def points_to_vtp(self, points):
         # Create VTK points
