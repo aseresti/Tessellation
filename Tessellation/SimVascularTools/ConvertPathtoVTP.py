@@ -31,14 +31,14 @@ class ConvertPath2VTP():
             x = float(path_point.attrib['x'])
             y = float(path_point.attrib['y'])
             z = float(path_point.attrib['z'])
-            points.append((x, y, z))
+            points.append([x, y, z])
         
         direction = []
-        for path_point in root.findall(".//path_point/tangent"):
-            x = float(path_point.attrib['x'])
-            y = float(path_point.attrib['y'])
-            z = float(path_point.attrib['z'])
-            direction.append((x, y, z))
+        for tangent in root.findall(".//path_point/tangent"):
+            x = float(tangent.attrib['x'])
+            y = float(tangent.attrib['y'])
+            z = float(tangent.attrib['z'])
+            direction.append([x, y, z])
 
         return points, direction
         
