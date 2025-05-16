@@ -171,10 +171,10 @@ class CreatePolarPlot():
         WriteVTPFile(os.path.join(self.OutputFolder, "LineIschemicCenter.vtp"), self.BoldLine(Line1))
         WriteVTPFile(os.path.join(self.OutputFolder, "LineTerritoryCenter.vtp"), self.BoldLine(Line2))
 
-        direction1 = np.linalg.norm(np.array(CenteroidIschemic)) #Centeroid_CircularMap = [0, 0, 0]
+        direction1 = np.array(CenteroidIschemic) #Centeroid_CircularMap = [0, 0, 0]
         direction1 /= np.linalg.norm(direction1)
 
-        direction2 = np.linalg.norm(np.array(CenteroidVesselTerritory)) #Centeroid_CircularMap = [0, 0, 0]
+        direction2 = np.array(CenteroidVesselTerritory) #Centeroid_CircularMap = [0, 0, 0]
         direction2 /= np.linalg.norm(direction2)
 
         dot_product = np.clip(np.dot(direction1, direction2), -1.0, 1.0)
