@@ -5,6 +5,7 @@ import vtk
 import argparse
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from vtk.util.numpy_support import vtk_to_numpy, numpy_to_vtk
 from utilities import ReadVTPFile, WriteVTPFile, GetCentroid, ThresholdByUpper, ExtractSurface, PrintProgress
 
 TessellationPath = os.path.abspath(f"{sys.path[0]}/..")
@@ -17,6 +18,7 @@ class CreatePolarPlot():
         slice_base = os.path.join(args.InputFolder, args.SliceBase)
         slice_apex = os.path.join(args.InputFolder, args.SliceApex)
         myocardium = os.path.join(args.InputFolder, args.Myocardium)
+        territorylabel = os.path.join(args.InputFolder, args.TerritoryLabels)
         pathfolder = os.path.join(args.InputFolder, args.PathFolder)
         OutputFolder = os.path.join(args.InputFolder, "PolarMap")
         InputFiles = glob.glob(f"{args.InputFolder}/*")
@@ -36,6 +38,11 @@ class CreatePolarPlot():
         else:
             print(f"{args.Myocardium} Not Found in the InputFolder")
 
+        if territorylabel in InputFiles:
+            self.TerritoryLabels = territorylabel
+        else:
+            print(f"{args.TerritoryLabels} Not Found in the InputFolder")
+
         if pathfolder in InputFiles:
             self.PathFolder = pathfolder
         else:
@@ -48,6 +55,7 @@ class CreatePolarPlot():
             self.OutputFolder = OutputFolder
 
         self.R_max = args.PlotRadius
+        self.TerritoryTag = args.TerritoryTag
 
     def Line(self, point1, point2, res):
         line = vtk.vtkLineSource()
@@ -123,6 +131,19 @@ class CreatePolarPlot():
         new_polydata.GetPointData().AddArray(ProfileCopy)
 
         return new_polydata
+    
+    def AddProfileToPolyData(self, old_polydata, Array, ArrayNameDestination):
+        ProfileCopy = vtk.vtkFloatArray()
+        ProfileCopy.SetName(ArrayNameDestination)
+        ProfileCopy.SetNumberOfComponents(1)
+        ProfileCopy.SetNumberOfTuples(old_polydata.GetNumberOfPoints())
+
+        for j in range(old_polydata.GetNumberOfPoints()):
+            ProfileCopy.SetTuple(j, Array.GetTuple(j))
+
+        old_polydata.GetPointData().AddArray(ProfileCopy)
+
+        return old_polydata
 
     def MeshPolyData(self, polydata):
         delaunay = vtk.vtkDelaunay2D()
@@ -187,6 +208,30 @@ class CreatePolarPlot():
         
         return new_points[sorted_idx]
     
+    def MergeTerritories(self, TerritoryTag, Surface):
+        with open(self.TerritoryLabels,'r') as infile:
+            infile.readline()
+            TerritoryLabels=[]
+            TerritoryNames = ""
+            for LINE in infile:
+                line=LINE.split()
+                for tag in TerritoryTag:
+                    if line[1].find(tag)>=0: 
+                        TerritoryLabels.append(int(line[0]))
+                        TerritoryNames += os.path.splitext(line[1])[0] + "+"
+        TerritoryNames = TerritoryNames[:-1]
+
+        ThresholdArray = np.zeros(Surface.GetNumberOfPoints())
+        for i in range(Surface.GetNumberOfPoints()):
+            if int(Surface.GetPointData().GetArray("TerritoryProfile").GetValue(i)) in TerritoryLabels:
+                ThresholdArray[i] = 1
+        
+        ThresholdArrayVTK = numpy_to_vtk(ThresholdArray, deep=True)
+        ThresholdArrayVTK.SetName("VesselTerritory")
+        Surface.GetPointData().AddArray(ThresholdArrayVTK)
+
+        return Surface
+    
     def BullsEye(self):
         CL_direction, CenterLine = self.DefineMyocardiumCenterLine(self.centeroid_base, self.centeroid_apex, 1000)
         rotation, _ = R.align_vectors([[0, 0, 1]], [CL_direction])
@@ -195,19 +240,10 @@ class CreatePolarPlot():
         Npoints  = CenterLine.GetNumberOfPoints()
         R_map = [i * self.R_max/Npoints for i in range(Npoints, 0, -1)]
 
-        for i in range(self.Myocardium.GetPointData().GetNumberOfArrays()):
-            array_name_ = self.Myocardium.GetPointData().GetArrayName(i)
-            if "Ischemic" in array_name_:
-                IschemicArrayName = array_name_
-                IschemicArrayNumber = i
-            elif "TerritoryLabels" in array_name_:
-                TerritoryArrayName = "SelectedTerritory"
-                TerritoryArrayNumber = i
-            else:
-                continue
+        IschemicArrayName = "IschemicProfile"
+        TerritoryArrayName = "TerritoryProfile"
 
-        append_filter_ischemic = vtk.vtkAppendPolyData()
-        append_filter_territory = vtk.vtkAppendPolyData()
+        append_filter = vtk.vtkAppendPolyData()
         Center = []
         progress_ = 0
         for i in range(Npoints):
@@ -219,8 +255,8 @@ class CreatePolarPlot():
                 Center.append(point)
                 continue
 
-            IschemicProfile = slice_.GetPointData().GetArray(IschemicArrayNumber)
-            TerritoryProfile = slice_.GetPointData().GetArray(TerritoryArrayNumber)
+            IschemicProfile = slice_.GetPointData().GetArray(IschemicArrayName)
+            TerritoryProfile = slice_.GetPointData().GetArray(TerritoryArrayName)
             pts_np = np.array([slice_.GetPoint(j) for j in range(slice_.GetNumberOfPoints())])
             center = pts_np.mean(axis=0)
             Center.append(center)
@@ -231,20 +267,19 @@ class CreatePolarPlot():
                 angle = np.arctan2(aligned_coord_[1], aligned_coord_[0])
                 new_coords.append([R_map[i]*np.cos(angle), R_map[i]*np.sin(angle), 0])
             
-            append_filter_ischemic.AddInputData(self.CopyProfileToPolyData(slice_, IschemicProfile, new_coords, IschemicArrayName))
-            append_filter_territory.AddInputData(self.CopyProfileToPolyData(slice_, TerritoryProfile, new_coords, TerritoryArrayName))
-        append_filter_ischemic.Update()
-        append_filter_territory.Update()
+            slice_ischemic = self.CopyProfileToPolyData(slice_, IschemicProfile, new_coords, IschemicArrayName)
+            
+            append_filter.AddInputData(self.AddProfileToPolyData(slice_ischemic, TerritoryProfile, TerritoryArrayName))
+        append_filter.Update()
 
         print("- Writing Territory and Ischemic Maps and Regions")
-        IschemicMap = self.MeshPolyData(append_filter_ischemic.GetOutput())
-        TerritoryMap = self.MeshPolyData(append_filter_territory.GetOutput())
+        PolarMap_ = self.MeshPolyData(append_filter.GetOutput())
+        PolarMap = self.MergeTerritories(self.TerritoryTag, PolarMap_)
 
-        WriteVTPFile(os.path.join(self.OutputFolder, "MyocardiumMap_Ischemic.vtp"), IschemicMap)
-        WriteVTPFile(os.path.join(self.OutputFolder, "MyocardiumMap_Territory.vtp"), TerritoryMap)
+        WriteVTPFile(os.path.join(self.OutputFolder, "MyocardiumPolarMap.vtp"), PolarMap)
 
-        IschemicRegionMap = ThresholdByUpper(self.ConvertSurfaceToVolume(IschemicMap), IschemicArrayName, 1)
-        TerritoryRegionMap = ThresholdByUpper(self.ConvertSurfaceToVolume(TerritoryMap), TerritoryArrayName, 1)
+        IschemicRegionMap = ThresholdByUpper(self.ConvertSurfaceToVolume(PolarMap), IschemicArrayName, 1)
+        TerritoryRegionMap = ThresholdByUpper(self.ConvertSurfaceToVolume(PolarMap), "VesselTerritory", 1)
 
         WriteVTPFile(os.path.join(self.OutputFolder, "MyocardiumMap_IschemicRegion.vtp"), ExtractSurface(IschemicRegionMap))
         WriteVTPFile(os.path.join(self.OutputFolder, "MyocardiumMap_TerritoryRegion.vtp"), ExtractSurface(TerritoryRegionMap))
@@ -296,9 +331,11 @@ class CreatePolarPlot():
 if __name__ == "__main__":
     Parser = argparse.ArgumentParser()
     Parser.add_argument("-InputFolder", "--InputFolder", dest= "InputFolder", required=True, type=str)
+    Parser.add_argument("-TerritoryTag", "--TerritoryTag", dest= "TerritoryTag", nargs="+", required=True, type=str)
     Parser.add_argument("-SliceApex", "--SliceApex", dest= "SliceApex", required=False, type=str, default="SliceApex.vtp")
     Parser.add_argument("-SliceBase", "--SliceBase", dest= "SliceBase", required=False, type=str, default="SliceBase.vtp")
     Parser.add_argument("-Myocardium", "--Myocardium", dest= "Myocardium", required=False, type=str, default="MyocardiumSurface.vtp")
+    Parser.add_argument("-TerritoryLabels", "--TerritoryLabels", dest= "TerritoryLabels", required=False, type= str, default="MBF_Territories_Labels.dat")
     Parser.add_argument("-PathFolder", "--PathFolder", dest= "PathFolder", required= False, type= str, default="Paths")
     Parser.add_argument("-PlotRadius", "--PlotRadius", dest= "PlotRadius", default=12.0, type= float, required= False)
     args = Parser.parse_args()
