@@ -171,19 +171,11 @@ class CreatePolarPlot():
         WriteVTPFile(os.path.join(self.OutputFolder, "LineIschemicCenter.vtp"), self.BoldLine(Line1))
         WriteVTPFile(os.path.join(self.OutputFolder, "LineTerritoryCenter.vtp"), self.BoldLine(Line2))
 
-        direction1 = [CenteroidIschemic[0] - Centeroid_CircularMap[0],
-                    CenteroidIschemic[1] - Centeroid_CircularMap[1],
-                    CenteroidIschemic[2] - Centeroid_CircularMap[2]
-                    ]
-
+        direction1 = np.linalg.norm(np.array(CenteroidIschemic)) #Centeroid_CircularMap = [0, 0, 0]
         direction1 /= np.linalg.norm(direction1)
 
-        direction2 = [CenteroidVesselTerritory[0] - Centeroid_CircularMap[0],
-                    CenteroidVesselTerritory[1] - Centeroid_CircularMap[1],
-                    CenteroidVesselTerritory[2] - Centeroid_CircularMap[2]
-                    ]
-
-        direction2 /= np.linalg.norm(direction1)
+        direction2 = np.linalg.norm(np.array(CenteroidVesselTerritory)) #Centeroid_CircularMap = [0, 0, 0]
+        direction2 /= np.linalg.norm(direction2)
 
         dot_product = np.clip(np.dot(direction1, direction2), -1.0, 1.0)
         angle_rad = np.arccos(dot_product)
@@ -313,10 +305,18 @@ class CreatePolarPlot():
                         slice_.GetPoint(j)[1] - Center[i][1],
                         slice_.GetPoint(j)[2] - Center[i][2]
                     ]
+                    distance = np.linalg.norm(np.array(slice_.GetPoint(j)) - np.array(Center[i]))
+                    
+                    Locator = vtk.vtkPointLocator()
+                    Locator.SetDataSet(self.Myocardium)
+                    Locator.BuildLocator()
+                    closest_point_id = Locator.FindClosestPoint(slice_.GetPoint(j))
+                    surface_point = self.Myocardium.GetPoint(closest_point_id)
+                    distance /= np.linalg.norm(np.array(surface_point) - np.array(Center[i]))
+
                     alignPoints = rotation.apply(centered_point)
                     angle = np.arctan2(alignPoints[1], alignPoints[0])
-                    new_points.append([R_map[i]*np.cos(angle), R_map[i]*np.sin(angle), 0])
-
+                    new_points.append([distance*R_map[i]*np.cos(angle), distance*R_map[i]*np.sin(angle), 0])
             
             new_points_sorted = self.ReorderCoronaryMapBasedOnCenterLine(arbitrary_points, VesselCenterline, new_points)
             vessel_polydata = Path2Point.points_to_vtp(new_points_sorted)
