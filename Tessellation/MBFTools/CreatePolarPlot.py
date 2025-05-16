@@ -21,34 +21,33 @@ class CreatePolarPlot():
         territorylabel = os.path.join(args.InputFolder, args.TerritoryLabels)
         pathfolder = os.path.join(args.InputFolder, args.PathFolder)
         OutputFolder = os.path.join(args.InputFolder, "PolarMap")
-        InputFiles = glob.glob(f"{args.InputFolder}/*")
 
-        if slice_base in InputFiles:
+        if os.path.isfile(slice_base):
             self.centeroid_base = GetCentroid(ReadVTPFile(slice_base))
         else:
             print(f"{args.SliceBase} Not Found in the InputFolder")
 
-        if slice_apex in InputFiles:
+        if os.path.isfile(slice_apex):
             self.centeroid_apex = GetCentroid(ReadVTPFile(slice_apex))
         else:
             print(f"{args.SliceApex} Not Found in the InputFolder")
 
-        if myocardium in InputFiles:
+        if os.path.isfile(myocardium):
             self.Myocardium = ReadVTPFile(myocardium)
         else:
             print(f"{args.Myocardium} Not Found in the InputFolder")
 
-        if territorylabel in InputFiles:
+        if os.path.isfile(territorylabel):
             self.TerritoryLabels = territorylabel
         else:
             print(f"{args.TerritoryLabels} Not Found in the InputFolder")
 
-        if pathfolder in InputFiles:
+        if os.path.isdir(pathfolder):
             self.PathFolder = pathfolder
         else:
             print(f"{args.PathFolder} directory Not Found in the InputFolder")
 
-        if OutputFolder in InputFiles:
+        if os.path.isdir(OutputFolder):
             self.OutputFolder = OutputFolder
         else:
             os.system(f"mkdir {OutputFolder}")
